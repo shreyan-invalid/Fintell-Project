@@ -1,0 +1,20 @@
+{
+  "name": "finintel-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@9.12.0",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "docker:up": "docker compose up -d --build",
+    "docker:down": "docker compose down -v",
+    "zap:baseline": "docker run --rm -t --network host ghcr.io/zaproxy/zaproxy:stable zap-baseline.py -t http://localhost:4000 -a"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.12",
+    "typescript": "^5.6.2"
+  }
+}

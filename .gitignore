@@ -1,0 +1,16 @@
+node_modules
+.pnpm-store
+.turbo
+dist
+build
+coverage
+.env
+.env.*
+!.env.example
+.DS_Store
+apps/api/generated
+apps/api/prisma/migrations
+apps/web/.vite
+apps/web/dist
+apps/web/cypress/videos
+apps/web/cypress/screenshots

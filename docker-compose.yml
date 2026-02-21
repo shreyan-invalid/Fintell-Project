@@ -1,0 +1,63 @@
+services:
+  api:
+    build:
+      context: ./apps/api
+    env_file:
+      - .env.example
+    environment:
+      DATABASE_URL: postgresql://finintel:finintel@postgres:5432/finintel
+      REDIS_URL: redis://redis:6379
+      KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/finintel/protocol/openid-connect/certs
+      KEYCLOAK_TOKEN_URL: http://keycloak:8080/realms/finintel/protocol/openid-connect/token
+      KEYCLOAK_CLIENT_ID: finintel-api
+      KEYCLOAK_CLIENT_SECRET: api-secret
+      DEMO_USERNAME: demo
+      DEMO_PASSWORD: Demo@1234
+      JWT_ISSUER: http://localhost:8080/realms/finintel
+      PORT: 4000
+      AUTH_MODE: optional
+      DEFAULT_TENANT_SLUG: tenant-1
+    depends_on:
+      - postgres
+      - redis
+    expose:
+      - "4000"
+
+  nginx:
+    build:
+      context: .
+      dockerfile: nginx/Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: finintel
+      POSTGRES_USER: finintel
+      POSTGRES_PASSWORD: finintel
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0.0
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./infra/keycloak:/opt/keycloak/data/import:ro
+
+volumes:
+  postgres-data:

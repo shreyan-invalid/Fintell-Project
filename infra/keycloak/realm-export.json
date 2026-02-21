@@ -1,0 +1,20 @@
+{
+  "realm": "finintel",
+  "enabled": true,
+  "clients": [
+    { "clientId": "finintel-api", "name": "FinIntel API", "publicClient": false, "secret": "api-secret", "directAccessGrantsEnabled": true, "protocol": "openid-connect" },
+    { "clientId": "tenant-alpha", "name": "Tenant Alpha", "publicClient": true, "protocol": "openid-connect" },
+    { "clientId": "tenant-beta", "name": "Tenant Beta", "publicClient": true, "protocol": "openid-connect" },
+    { "clientId": "tenant-gamma", "name": "Tenant Gamma", "publicClient": true, "protocol": "openid-connect" },
+    { "clientId": "tenant-delta", "name": "Tenant Delta", "publicClient": true, "protocol": "openid-connect" },
+    { "clientId": "tenant-epsilon", "name": "Tenant Epsilon", "publicClient": true, "protocol": "openid-connect" }
+  ],
+  "roles": {
+    "realm": [
+      { "name": "OWNER" },
+      { "name": "CFO" },
+      { "name": "ANALYST" },
+      { "name": "VIEWER" }
+    ]
+  }
+}

@@ -1,0 +1,30 @@
+name: ZAP Baseline Scan
+
+on:
+  workflow_dispatch:
+  pull_request:
+
+jobs:
+  zap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start API stack
+        run: docker compose up -d postgres redis keycloak api
+      - name: Wait for API
+        run: |
+          for i in {1..30}; do
+            if curl -fsS http://localhost/health >/dev/null 2>&1 || curl -fsS http://localhost:4000/health >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 5
+          done
+          exit 1
+      - name: OWASP ZAP Baseline
+        uses: zaproxy/action-baseline@v0.12.0
+        with:
+          target: 'http://localhost:4000'
+          cmd_options: '-a'
+      - name: Stop stack
+        if: always()
+        run: docker compose down -v

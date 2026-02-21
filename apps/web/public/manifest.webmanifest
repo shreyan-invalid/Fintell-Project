@@ -1,0 +1,9 @@
+{
+  "name": "FinIntel Dashboard",
+  "short_name": "FinIntel",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fbfc",
+  "theme_color": "#005f73",
+  "icons": []
+}

@@ -1,0 +1,37 @@
+{
+  "name": "@finintel/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview --host",
+    "lint": "echo 'Add ESLint config'",
+    "test": "echo 'Add Vitest suite'",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "cypress:open": "cypress open",
+    "cypress:run": "cypress run"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.13.3",
+    "@emotion/styled": "^11.13.0",
+    "@mui/icons-material": "^6.1.3",
+    "@mui/material": "^6.1.3",
+    "@tanstack/react-query": "^5.56.2",
+    "ag-grid-community": "^32.2.1",
+    "ag-grid-react": "^32.2.1",
+    "axios": "^1.7.7",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "recharts": "^2.12.7"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.9",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.2",
+    "cypress": "^13.15.1",
+    "typescript": "^5.6.2",
+    "vite": "^5.4.8"
+  }
+}
