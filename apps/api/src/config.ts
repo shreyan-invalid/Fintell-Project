@@ -23,7 +23,7 @@ const schema = z.object({
   AWS_REGION: z.string().default("us-east-1"),
   AWS_ACCESS_KEY_ID: z.string().min(1).optional(),
   AWS_SECRET_ACCESS_KEY: z.string().min(1).optional(),
-  AWS_S3_ENDPOINT: z.string().url().optional(),
+  AWS_S3_ENDPOINT: z.string().optional().transform((v) => (v && v.trim() ? v : undefined)).pipe(z.string().url().optional()),
   AWS_S3_FORCE_PATH_STYLE: z.coerce.boolean().default(false),
   LOCAL_UPLOAD_DIR: z.string().default("/tmp/finintel-uploads"),
   DEFAULT_TENANT_SLUG: z.string().default("tenant-1"),
