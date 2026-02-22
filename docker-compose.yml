@@ -3,7 +3,7 @@ services:
     build:
       context: ./apps/api
     env_file:
-      - .env.example
+      - .env
     environment:
       DATABASE_URL: postgresql://finintel:finintel@postgres:5432/finintel
       REDIS_URL: redis://redis:6379
@@ -17,18 +17,22 @@ services:
       PORT: 4000
       AUTH_MODE: required
       DEFAULT_TENANT_SLUG: tenant-1
+      STORAGE_MODE: local
+      LOCAL_UPLOAD_DIR: /tmp/finintel-uploads
     depends_on:
       - postgres
       - redis
     expose:
       - "4000"
+    volumes:
+      - api-uploads:/tmp/finintel-uploads
 
   api-test:
     build:
       context: ./apps/api
       target: test
     env_file:
-      - .env.example
+      - .env
     environment:
       NODE_ENV: test
       DATABASE_URL: postgresql://finintel:finintel@postgres:5432/finintel
@@ -40,6 +44,8 @@ services:
       JWT_ISSUER: http://localhost:8080/realms/finintel
       AUTH_MODE: required
       DEFAULT_TENANT_SLUG: tenant-1
+      STORAGE_MODE: local
+      LOCAL_UPLOAD_DIR: /tmp/finintel-uploads
     depends_on:
       - postgres
       - redis
@@ -82,3 +88,4 @@ services:
 
 volumes:
   postgres-data:
+  api-uploads:

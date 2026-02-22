@@ -2,13 +2,15 @@ import { Alert, Box, Button, CircularProgress, Container, CssBaseline, Grid2 as 
 import { ThemeProvider } from "@mui/material/styles";
 import type { AxiosError } from "axios";
 import { useEffect, useMemo, useState } from "react";
-import { getAuthState } from "./api/authState";
+import { canUploadReports, getAuthState, getUserRoleFromToken } from "./api/authState";
 import { beginOidcLogin, completeOidcCallback, logoutOidc } from "./api/oidc";
 import { AuthPanel } from "./components/AuthPanel";
 import { FinancialGrid } from "./components/FinancialGrid";
 import { KpiCards } from "./components/KpiCards";
+import { ReportsGrid } from "./components/ReportsGrid";
 import { RevenueChart } from "./components/RevenueChart";
 import { useMetrics } from "./hooks/useMetrics";
+import { useReports } from "./hooks/useReports";
 import { theme } from "./theme/theme";
 
 type LocalAuth = {
@@ -25,8 +27,26 @@ export default function App() {
   });
 
   const isAuthenticated = useMemo(() => Boolean(auth.token && auth.idToken), [auth]);
+  const userRole = useMemo(() => getUserRoleFromToken(auth.token), [auth.token]);
+  const uploadAllowed = useMemo(() => canUploadReports(userRole), [userRole]);
 
-  const { data, isLoading, isError, error, refetch } = useMetrics({
+  const {
+    data,
+    isLoading,
+    isError,
+    error,
+    refetch: refetchMetrics
+  } = useMetrics({
+    enabled: isAuthenticated && !isCallbackPath
+  });
+
+  const {
+    data: reports,
+    isLoading: reportsLoading,
+    isError: reportsIsError,
+    error: reportsError,
+    refetch: refetchReports
+  } = useReports({
     enabled: isAuthenticated && !isCallbackPath
   });
 
@@ -40,12 +60,12 @@ export default function App() {
         await completeOidcCallback();
         const state = getAuthState();
         setAuth({ token: state.token, idToken: state.idToken });
-        await refetch();
+        await Promise.all([refetchMetrics(), refetchReports()]);
       } catch (err) {
         setOidcError(err instanceof Error ? err.message : "OIDC login failed");
       }
     })();
-  }, [isCallbackPath, refetch]);
+  }, [isCallbackPath, refetchMetrics, refetchReports]);
 
   if (!isAuthenticated && !isCallbackPath) {
     return (
@@ -80,9 +100,13 @@ export default function App() {
     );
   }
 
-  const message = oidcError || (isError
+  const metricsMessage = oidcError || (isError
     ? ((error as AxiosError<{ error?: string }>)?.response?.data?.error ?? "Failed to fetch metrics")
     : null);
+
+  const reportsMessage = reportsIsError
+    ? ((reportsError as AxiosError<{ error?: string }>)?.response?.data?.error ?? "Failed to fetch reports")
+    : null;
 
   return (
     <ThemeProvider theme={theme}>
@@ -104,9 +128,14 @@ export default function App() {
             Logout
           </Button>
 
-          <AuthPanel onApply={async () => { await refetch(); }} />
+          <AuthPanel
+            onApply={async () => {
+              await Promise.all([refetchMetrics(), refetchReports()]);
+            }}
+          />
 
-          {message ? <Alert severity="warning" sx={{ mb: 2 }}>{message}</Alert> : null}
+          {metricsMessage ? <Alert severity="warning" sx={{ mb: 2 }}>{metricsMessage}</Alert> : null}
+          {reportsMessage ? <Alert severity="warning" sx={{ mb: 2 }}>{reportsMessage}</Alert> : null}
 
           {isLoading ? (
             <CircularProgress />
@@ -119,6 +148,19 @@ export default function App() {
                 </Grid>
                 <Grid size={{ xs: 12, lg: 6 }}>
                   <FinancialGrid rows={data?.trend ?? []} />
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  {reportsLoading ? (
+                    <CircularProgress />
+                  ) : (
+                    <ReportsGrid
+                      rows={reports ?? []}
+                      canUpload={uploadAllowed}
+                      onUploadComplete={async () => {
+                        await refetchReports();
+                      }}
+                    />
+                  )}
                 </Grid>
               </Grid>
             </>

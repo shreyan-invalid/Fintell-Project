@@ -11,7 +11,10 @@ const schema = z.object({
   JWT_ISSUER: z.string().url(),
   JWT_AUDIENCE: z.string().min(1),
   KEYCLOAK_JWKS_URI: z.string().url(),
-  KEYCLOAK_TOKEN_URL: z.string().url().default("http://localhost:8080/realms/finintel/protocol/openid-connect/token"),
+  KEYCLOAK_TOKEN_URL: z
+    .string()
+    .url()
+    .default("http://localhost:8080/realms/finintel/protocol/openid-connect/token"),
   KEYCLOAK_CLIENT_ID: z.string().default("finintel-api"),
   KEYCLOAK_CLIENT_SECRET: z.string().default("api-secret"),
   OIDC_CLIENT_ID: z.string().default("finintel-api"),
@@ -21,8 +24,11 @@ const schema = z.object({
   AWS_REGION: z.string().default("us-east-1"),
   AWS_ACCESS_KEY_ID: z.string().min(1),
   AWS_SECRET_ACCESS_KEY: z.string().min(1),
+  STORAGE_MODE: z.enum(["s3", "local"]).default("s3"),
+  LOCAL_UPLOAD_DIR: z.string().default("/tmp/finintel-uploads"),
   DEFAULT_TENANT_SLUG: z.string().default("tenant-1"),
-  AUTH_MODE: z.enum(["optional", "required"]).default("required")
+  AUTH_MODE: z.enum(["optional", "required"]).default("required"),
+  AUTH_DEBUG: z.coerce.boolean().default(false)
 });
 
 export const config = schema.parse(process.env);

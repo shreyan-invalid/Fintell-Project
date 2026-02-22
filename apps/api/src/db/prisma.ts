@@ -9,6 +9,10 @@ type PrismaFallback = {
   };
   reportArchive: {
     create: (args: unknown) => Promise<unknown>;
+    findMany: (args?: unknown) => Promise<
+      Array<{ id: string; fileName: string; s3Key: string; uploadedBy: string; createdAt: Date }>
+    >;
+    findFirst: (args?: unknown) => Promise<{ fileName: string; s3Key: string } | null>;
   };
   tenant: {
     findFirst: (args: unknown) => Promise<{ id: string; slug: string } | null>;
@@ -23,7 +27,9 @@ function createFallbackClient(): PrismaFallback {
       findMany: async () => []
     },
     reportArchive: {
-      create: async (args: unknown) => args
+      create: async (args: unknown) => args,
+      findMany: async () => [],
+      findFirst: async () => null
     },
     tenant: {
       findFirst: async () => null,
