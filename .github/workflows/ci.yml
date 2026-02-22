@@ -17,17 +17,25 @@ jobs:
       CYPRESS_INSTALL_BINARY: "0"
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: pnpm
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile=false
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Enable Corepack + pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.12.0 --activate
+          pnpm --version
+
+      - name: Install dependencies (workspace + dev deps)
+        run: pnpm install --frozen-lockfile=false --prod=false
+
       - name: Web typecheck
         run: pnpm --filter @finintel/web typecheck
+
       - name: Web build
         run: pnpm --filter @finintel/web build
 
@@ -38,15 +46,22 @@ jobs:
       CYPRESS_INSTALL_BINARY: "0"
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: pnpm
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile=false
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Enable Corepack + pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.12.0 --activate
+          pnpm --version
+
+      - name: Install dependencies (workspace + dev deps)
+        run: pnpm install --frozen-lockfile=false --prod=false
+
       - name: API typecheck
         run: pnpm --filter @finintel/api typecheck
 
@@ -55,8 +70,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Build and run API tests in Docker
         run: docker compose run --rm api-test
+
       - name: Stop stack
         if: always()
         run: docker compose down -v
@@ -66,5 +83,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Build API and NGINX images
         run: docker compose build api nginx
