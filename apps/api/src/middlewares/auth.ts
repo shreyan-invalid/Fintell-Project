@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
-import { createRemoteJWKSet, jwtVerify } from "jose";
+import { createRemoteJWKSet, errors as JoseErrors, jwtVerify } from "jose";
 import { config } from "../config.js";
 import type { UserRole } from "../types/auth.js";
 
@@ -22,6 +22,13 @@ type JwtPayload = {
 };
 
 type AuthResult = "authenticated" | "missing" | "invalid";
+
+function debugAuth(req: Request, reason: string): void {
+  if (!config.AUTH_DEBUG) return;
+  console.warn(
+    `[auth] ${reason} method=${req.method} path=${req.originalUrl} ip=${req.ip} tenantHeader=${req.header("x-tenant-id") ?? ""}`
+  );
+}
 
 function extractRole(payload: JwtPayload): UserRole {
   if (payload.role && KNOWN_ROLES.includes(payload.role)) {
@@ -61,6 +68,7 @@ async function hydrateUserFromToken(req: Request): Promise<AuthResult> {
     const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
 
     if (!token) {
+      debugAuth(req, "missing bearer token");
       return "missing";
     }
 
@@ -73,7 +81,18 @@ async function hydrateUserFromToken(req: Request): Promise<AuthResult> {
     const audienceAccepted =
       audienceList.includes(config.JWT_AUDIENCE) || typed.azp === config.JWT_AUDIENCE;
 
-    if (!typed.sub || !issuerAccepted || !audienceAccepted) {
+    if (!typed.sub) {
+      debugAuth(req, "token missing sub claim");
+      return "invalid";
+    }
+
+    if (!issuerAccepted) {
+      debugAuth(req, `issuer mismatch tokenIss=${typed.iss ?? ""} expected=${config.JWT_ISSUER} internal=${INTERNAL_ISSUER}`);
+      return "invalid";
+    }
+
+    if (!audienceAccepted) {
+      debugAuth(req, `audience mismatch tokenAud=${audienceList.join(",")} tokenAzp=${typed.azp ?? ""} expected=${config.JWT_AUDIENCE}`);
       return "invalid";
     }
 
@@ -84,17 +103,35 @@ async function hydrateUserFromToken(req: Request): Promise<AuthResult> {
       tenantFromHeader ??
       (config.AUTH_MODE === "optional" ? config.DEFAULT_TENANT_SLUG : undefined);
 
-    if (!tenantId) return "invalid";
+    if (!tenantId) {
+      debugAuth(req, "missing tenant context in token/header; continuing for non-tenant route");
+    }
 
     req.user = {
       sub: typed.sub,
-      tenantId,
+      ...(tenantId ? { tenantId } : {}),
       role: extractRole(typed),
       email: typed.email
     };
 
     return "authenticated";
-  } catch {
+  } catch (error) {
+    if (error instanceof JoseErrors.JWTExpired) {
+      debugAuth(req, "token expired");
+      return "invalid";
+    }
+
+    if (error instanceof JoseErrors.JWSSignatureVerificationFailed) {
+      debugAuth(req, "signature verification failed");
+      return "invalid";
+    }
+
+    if (error instanceof Error) {
+      debugAuth(req, `jwt verification failed: ${error.message}`);
+    } else {
+      debugAuth(req, "jwt verification failed: unknown error");
+    }
+
     return "invalid";
   }
 }
