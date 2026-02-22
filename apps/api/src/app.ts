@@ -13,6 +13,8 @@ import { requireTenant } from "./middlewares/tenant.js";
 import { authRouter } from "./routes/auth.js";
 import { financialRouter } from "./routes/financial.js";
 import { healthRouter } from "./routes/health.js";
+import { oidcRouter } from "./routes/oidc.js";
+import { tenantsRouter } from "./routes/tenants.js";
 import { uploadRouter } from "./routes/upload.js";
 
 export async function createApp() {
@@ -26,6 +28,8 @@ export async function createApp() {
   });
   app.use(healthRouter);
   app.use("/api/auth", authRouter);
+  app.use("/api/oidc", oidcRouter);
+  app.use("/api/tenants", authenticate, rateLimit, tenantsRouter);
 
   const authMiddleware = config.AUTH_MODE === "required" ? authenticate : authenticateOptional;
   app.use("/api/v1", authMiddleware, rateLimit, requireTenant);

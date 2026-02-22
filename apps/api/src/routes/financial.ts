@@ -33,18 +33,25 @@ export function parseFilters(query: unknown): MetricsFilters {
 }
 
 financialRouter.get("/metrics", async (req, res) => {
+  if (!res.locals.tenantId) {
+    res.json({ trend: [], totals: { revenue: 0, expenses: 0, netProfit: 0 } });
+    return;
+  }
   const tenantId = res.locals.tenantId as string;
   const data = await getMetrics(tenantId, parseFilters(req.query));
   res.json(data);
 });
 
 financialRouter.get("/metrics/sources", async (req, res) => {
+  if (!res.locals.tenantId) { res.json({ sources: [] }); return; }
   const tenantId = res.locals.tenantId as string;
   const sources = await getSourceBreakdown(tenantId, parseFilters(req.query));
   res.json({ sources });
 });
 
 financialRouter.get("/metrics/anomalies", async (req, res) => {
+  if (!res.locals.tenantId) { res.json({ anomalies: [] }); return; }
+
   const tenantId = res.locals.tenantId as string;
   const anomalies = await getAnomalies(tenantId, parseFilters(req.query));
   res.json({ anomalies });

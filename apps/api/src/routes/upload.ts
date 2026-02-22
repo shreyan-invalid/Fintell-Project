@@ -1,6 +1,7 @@
 import { Router } from "express";
 import multer from "multer";
 import { prisma } from "../db/prisma.js";
+import { authorize } from "../middlewares/authorize.js";
 import { uploadReport } from "../services/s3.js";
 
 const ALLOWED_MIME = new Set([
@@ -24,7 +25,7 @@ const upload = multer({
 
 export const uploadRouter = Router();
 
-uploadRouter.post("/upload", upload.single("file"), async (req, res) => {
+uploadRouter.post("/upload", authorize("OWNER", "CFO", "ANALYST"), upload.single("file"), async (req, res) => {
   const tenantId = res.locals.tenantId as string;
 
   if (!req.file) {
