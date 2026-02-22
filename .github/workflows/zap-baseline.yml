@@ -10,6 +10,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Prepare env file
+        run: cp .env.template .env
+
       - name: Start stack
         run: docker compose up -d postgres redis keycloak api nginx
 
@@ -31,7 +34,9 @@ jobs:
         with:
           target: 'http://localhost:3000'
           cmd_options: '-a'
+      - name: Prepare env file
+        run: cp .env.template .env
 
       - name: Stop stack
         if: always()
-        run: docker compose down -v
+        run: docker compose down -v || true
