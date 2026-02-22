@@ -2,6 +2,10 @@
 
 interface ImportMetaEnv {
   readonly VITE_API_URL?: string;
+  readonly VITE_OIDC_AUTH_URL?: string;
+  readonly VITE_OIDC_LOGOUT_URL?: string;
+  readonly VITE_OIDC_CLIENT_ID?: string;
+  readonly VITE_OIDC_SCOPE?: string;
 }
 
 interface ImportMeta {

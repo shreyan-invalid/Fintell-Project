@@ -5,6 +5,7 @@ import type { UserRole } from "../types/auth.js";
 
 const JWKS = createRemoteJWKSet(new URL(config.KEYCLOAK_JWKS_URI));
 const INTERNAL_ISSUER = config.KEYCLOAK_JWKS_URI.replace(/\/protocol\/openid-connect\/certs$/, "");
+const KNOWN_ROLES: UserRole[] = ["OWNER", "CFO", "ANALYST", "VIEWER"];
 
 type JwtPayload = {
   sub: string;
@@ -23,11 +24,13 @@ type JwtPayload = {
 type AuthResult = "authenticated" | "missing" | "invalid";
 
 function extractRole(payload: JwtPayload): UserRole {
-  const candidate = payload.role ?? payload.realm_access?.roles?.[0] ?? "VIEWER";
-  if (candidate === "OWNER" || candidate === "CFO" || candidate === "ANALYST" || candidate === "VIEWER") {
-    return candidate;
+  if (payload.role && KNOWN_ROLES.includes(payload.role)) {
+    return payload.role;
   }
-  return "VIEWER";
+
+  const realmRoles = payload.realm_access?.roles ?? [];
+  const matched = KNOWN_ROLES.find((role) => realmRoles.includes(role));
+  return matched ?? "VIEWER";
 }
 
 export async function authenticate(req: Request, res: Response, next: NextFunction): Promise<void> {

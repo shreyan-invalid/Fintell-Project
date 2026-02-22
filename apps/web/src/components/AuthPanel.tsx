@@ -1,108 +1,120 @@
-import { Button, Card, CardContent, Stack, TextField, Typography } from "@mui/material";
-import { useMemo, useState } from "react";
-import { clearAuthState, getAuthState, setAuthState } from "../api/authState";
+import { Alert, Card, CardContent, CircularProgress, FormControl, InputLabel, MenuItem, Select, Stack, Typography } from "@mui/material";
+import type { SelectChangeEvent } from "@mui/material/Select";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { getAuthState, setAuthState } from "../api/authState";
+import { fetchTenants, type TenantOption } from "../api/tenants";
 
 type Props = {
-  onApply: () => void;
+  onApply: () => Promise<unknown>;
 };
 
 export function AuthPanel({ onApply }: Props) {
   const initial = useMemo(() => getAuthState(), []);
-  const [token, setToken] = useState(initial.token);
   const [tenant, setTenant] = useState(initial.tenant);
-  const [username, setUsername] = useState("demo");
-  const [password, setPassword] = useState("Demo@1234");
-  const [loading, setLoading] = useState(false);
+  const [tenants, setTenants] = useState<TenantOption[]>([]);
+  const [loadingTenants, setLoadingTenants] = useState(true);
+  const [switchingTenant, setSwitchingTenant] = useState(false);
   const [error, setError] = useState("");
 
-  async function generateToken() {
-    setLoading(true);
-    setError("");
-    try {
-      const response = await fetch("/api/auth/token", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ username, password })
-      });
-      const payload = (await response.json().catch(() => ({}))) as {
-        accessToken?: string;
-        error?: string;
-      };
-      if (!response.ok || !payload.accessToken) {
-        setError(payload.error ?? "Failed to generate token");
-        return;
+  const switchTenant = useCallback(
+    async (nextTenant: string) => {
+      const { token, idToken, refreshToken } = getAuthState();
+      setSwitchingTenant(true);
+      setError("");
+
+      try {
+        setAuthState(token, nextTenant, idToken, refreshToken);
+        await onApply();
+      } catch {
+        setError("Failed to load selected tenant data");
+      } finally {
+        setSwitchingTenant(false);
       }
-      setToken(payload.accessToken);
-      setAuthState(payload.accessToken, tenant);
-      onApply();
-    } catch {
-      setError("Failed to generate token");
-    } finally {
-      setLoading(false);
-    }
+    },
+    [onApply]
+  );
+
+  useEffect(() => {
+    let active = true;
+
+    void (async () => {
+      setLoadingTenants(true);
+      setError("");
+
+      try {
+        const options = await fetchTenants();
+        if (!active) return;
+
+        setTenants(options);
+
+        const hasCurrent = options.some((item) => item.slug === tenant || item.id === tenant);
+        if (!hasCurrent && options[0]) {
+          const nextTenant = options[0].slug;
+          setTenant(nextTenant);
+          await switchTenant(nextTenant);
+        }
+      } catch {
+        if (!active) return;
+        setError("Unable to load tenants");
+      } finally {
+        if (active) setLoadingTenants(false);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [switchTenant, tenant]);
+
+  async function handleTenantChange(event: SelectChangeEvent<string>): Promise<void> {
+    const nextTenant = event.target.value;
+    setTenant(nextTenant);
+    await switchTenant(nextTenant);
   }
 
   return (
     <Card sx={{ mb: 2 }}>
       <CardContent>
-        <Typography variant="h6" sx={{ mb: 1 }}>Authentication</Typography>
+        <Typography variant="h6" sx={{ mb: 1 }}>Tenant View</Typography>
         <Stack spacing={1.5}>
-          <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
-            <TextField
-              label="Username"
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
-              size="small"
-            />
-            <TextField
-              label="Password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              size="small"
-              type="password"
-            />
-            <Button variant="outlined" onClick={() => void generateToken()} disabled={loading}>
-              {loading ? "Generating..." : "Generate Token"}
-            </Button>
-          </Stack>
-          <TextField
-            label="Bearer Token"
-            value={token}
-            onChange={(event) => setToken(event.target.value)}
-            size="small"
-            fullWidth
-          />
-          <TextField
-            label="Tenant (slug or id)"
-            value={tenant}
-            onChange={(event) => setTenant(event.target.value)}
-            size="small"
-          />
-          <Stack direction="row" spacing={1}>
-            <Button
-              variant="contained"
-              onClick={() => {
-                setError("");
-                setAuthState(token, tenant);
-                onApply();
+          <FormControl size="small" fullWidth>
+            <InputLabel id="tenant-select-label">Tenant</InputLabel>
+            <Select
+              labelId="tenant-select-label"
+              label="Tenant"
+              value={tenant}
+              onChange={(event) => {
+                void handleTenantChange(event);
               }}
+              disabled={loadingTenants || switchingTenant}
             >
-              Apply
-            </Button>
-            <Button
-              variant="outlined"
-              onClick={() => {
-                setError("");
-                clearAuthState();
-                setToken("");
-                setTenant("tenant-1");
-                onApply();
-              }}
-            >
-              Clear
-            </Button>
-          </Stack>
-          {error ? <Typography color="error" variant="body2">{error}</Typography> : null}
+              {tenants.length === 0 ? (
+                <MenuItem value={tenant || "tenant-1"}>{tenant || "tenant-1"}</MenuItem>
+              ) : (
+                tenants.map((item) => (
+                  <MenuItem key={item.id} value={item.slug}>
+                    {item.name} ({item.slug})
+                  </MenuItem>
+                ))
+              )}
+            </Select>
+          </FormControl>
+
+          {loadingTenants ? (
+            <Stack direction="row" spacing={1} alignItems="center">
+              <CircularProgress size={18} />
+              <Typography variant="body2">Loading tenants...</Typography>
+            </Stack>
+          ) : null}
+
+          {switchingTenant ? (
+            <Stack direction="row" spacing={1} alignItems="center">
+              <CircularProgress size={18} />
+              <Typography variant="body2">Switching tenant and loading data...</Typography>
+            </Stack>
+          ) : null}
+
+          {error ? <Alert severity="warning">{error}</Alert> : null}
         </Stack>
       </CardContent>
     </Card>

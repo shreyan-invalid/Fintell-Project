@@ -9,22 +9,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Start API stack
-        run: docker compose up -d postgres redis keycloak api
-      - name: Wait for API
+
+      - name: Start stack
+        run: docker compose up -d postgres redis keycloak api nginx
+
+      - name: Wait for stack
         run: |
           for i in {1..30}; do
-            if curl -fsS http://localhost/health >/dev/null 2>&1 || curl -fsS http://localhost:4000/health >/dev/null 2>&1; then
+            if docker compose logs api 2>&1 | grep -q "API listening on :4000" \
+              && curl -fsS http://localhost:3000 >/dev/null 2>&1; then
               exit 0
             fi
             sleep 5
           done
+          docker compose logs api --tail=100
+          docker compose logs nginx --tail=100
           exit 1
+
       - name: OWASP ZAP Baseline
         uses: zaproxy/action-baseline@v0.12.0
         with:
-          target: 'http://localhost:4000'
+          target: 'http://localhost:3000'
           cmd_options: '-a'
+
       - name: Stop stack
         if: always()
         run: docker compose down -v

@@ -14,6 +14,7 @@ const schema = z.object({
   KEYCLOAK_TOKEN_URL: z.string().url().default("http://localhost:8080/realms/finintel/protocol/openid-connect/token"),
   KEYCLOAK_CLIENT_ID: z.string().default("finintel-api"),
   KEYCLOAK_CLIENT_SECRET: z.string().default("api-secret"),
+  OIDC_CLIENT_ID: z.string().default("finintel-api"),
   DEMO_USERNAME: z.string().default("demo"),
   DEMO_PASSWORD: z.string().default("Demo@1234"),
   S3_BUCKET: z.string().min(1),
@@ -21,7 +22,7 @@ const schema = z.object({
   AWS_ACCESS_KEY_ID: z.string().min(1),
   AWS_SECRET_ACCESS_KEY: z.string().min(1),
   DEFAULT_TENANT_SLUG: z.string().default("tenant-1"),
-  AUTH_MODE: z.enum(["optional", "required"]).default("optional")
+  AUTH_MODE: z.enum(["optional", "required"]).default("required")
 });
 
 export const config = schema.parse(process.env);

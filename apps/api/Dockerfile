@@ -12,6 +12,14 @@ COPY prisma ./prisma
 COPY src ./src
 RUN pnpm prisma:generate && pnpm build
 
+FROM deps AS test
+COPY prisma ./prisma
+COPY src ./src
+COPY tests ./tests
+COPY jest.config.cjs tsconfig.test.json ./
+ENV NODE_ENV=test
+CMD ["pnpm", "test"]
+
 FROM node:20-slim AS runtime
 WORKDIR /app
 RUN apt-get update -y && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
