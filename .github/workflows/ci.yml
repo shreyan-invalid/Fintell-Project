@@ -5,9 +5,16 @@ on:
     branches: [main]
   pull_request:
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  test:
+  web-quality:
+    name: Web Typecheck + Build
     runs-on: ubuntu-latest
+    env:
+      CYPRESS_INSTALL_BINARY: "0"
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -17,6 +24,47 @@ jobs:
         with:
           node-version: 20
           cache: pnpm
-      - run: pnpm install
-      - run: pnpm typecheck
-      - run: pnpm test
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile=false
+      - name: Web typecheck
+        run: pnpm --filter @finintel/web typecheck
+      - name: Web build
+        run: pnpm --filter @finintel/web build
+
+  api-quality:
+    name: API Typecheck
+    runs-on: ubuntu-latest
+    env:
+      CYPRESS_INSTALL_BINARY: "0"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile=false
+      - name: API typecheck
+        run: pnpm --filter @finintel/api typecheck
+
+  api-container-tests:
+    name: API Tests (Container)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and run API tests in Docker
+        run: docker compose run --rm api-test
+      - name: Stop stack
+        if: always()
+        run: docker compose down -v
+
+  docker-build:
+    name: Docker Build Sanity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build API and NGINX images
+        run: docker compose build api nginx

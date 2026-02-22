@@ -1,75 +1,96 @@
 import type { NextFunction, Request, Response } from "express";
+import { Prisma } from "@prisma/client";
 import { config } from "../config.js";
 import { prisma } from "../db/prisma.js";
 
-async function ensureDefaultTenant(): Promise<string | null> {
-  if (config.AUTH_MODE === "required") {
-    return null;
-  }
-
-  const tenant = await prisma.tenant.upsert({
-    where: { slug: config.DEFAULT_TENANT_SLUG },
-    update: {},
-    create: {
-      name: "Default Tenant",
-      slug: config.DEFAULT_TENANT_SLUG,
-      keycloakRealmId: config.DEFAULT_TENANT_SLUG
-    },
-    select: { id: true }
-  });
-
-  return tenant.id;
+function isMissingTableError(error: unknown): boolean {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2021";
 }
 
-async function resolveTenantId(tenantHint?: string): Promise<string | null> {
-  if (tenantHint) {
-    const byHint = await prisma.tenant.findFirst({
-      where: {
-        OR: [{ id: tenantHint }, { slug: tenantHint }]
+async function ensureDefaultTenant(): Promise<string | null> {
+  if (config.AUTH_MODE === "required") return null;
+
+  try {
+    const tenant = await prisma.tenant.upsert({
+      where: { slug: config.DEFAULT_TENANT_SLUG },
+      update: {},
+      create: {
+        name: "Default Tenant",
+        slug: config.DEFAULT_TENANT_SLUG,
+        keycloakRealmId: config.DEFAULT_TENANT_SLUG
       },
       select: { id: true }
     });
-    if (byHint) return byHint.id;
+    return tenant.id;
+  } catch (error) {
+    if (isMissingTableError(error)) return null;
+    throw error;
   }
+}
 
-  if (config.AUTH_MODE === "required") {
-    return null;
+async function resolveTenantId(tenantHint?: string): Promise<string | null> {
+  try {
+    if (tenantHint) {
+      const byHint = await prisma.tenant.findFirst({
+        where: { OR: [{ id: tenantHint }, { slug: tenantHint }] },
+        select: { id: true }
+      });
+      if (byHint) return byHint.id;
+    }
+
+    if (config.AUTH_MODE === "required") return null;
+
+    const byDefaultSlug = await prisma.tenant.findFirst({
+      where: { slug: config.DEFAULT_TENANT_SLUG },
+      select: { id: true }
+    });
+    if (byDefaultSlug) return byDefaultSlug.id;
+
+    const firstTenant = await prisma.tenant.findFirst({ select: { id: true } });
+    if (firstTenant) return firstTenant.id;
+
+    return ensureDefaultTenant();
+  } catch (error) {
+    if (isMissingTableError(error)) return null;
+    throw error;
   }
-
-  const byDefaultSlug = await prisma.tenant.findFirst({
-    where: { slug: config.DEFAULT_TENANT_SLUG },
-    select: { id: true }
-  });
-  if (byDefaultSlug) return byDefaultSlug.id;
-
-  const firstTenant = await prisma.tenant.findFirst({
-    select: { id: true }
-  });
-  if (firstTenant) return firstTenant.id;
-
-  return ensureDefaultTenant();
 }
 
 export async function requireTenant(req: Request, res: Response, next: NextFunction): Promise<void> {
-  const tenantHint = req.header("x-tenant-id");
-  if (req.user?.tenantId) {
-    const tenantId = await resolveTenantId(req.user.tenantId);
+  try {
+    const tenantHint = req.header("x-tenant-id");
+
+    if (req.user?.tenantId) {
+      const tenantId = await resolveTenantId(req.user.tenantId);
+      if (!tenantId) {
+        if (config.AUTH_MODE === "optional") {
+          res.locals.tenantId = "";
+          next();
+          return;
+        }
+        res.status(503).json({ error: "Database not initialized" });
+        return;
+      }
+      req.user.tenantId = tenantId;
+      res.locals.tenantId = tenantId;
+      next();
+      return;
+    }
+
+    const tenantId = await resolveTenantId(tenantHint ?? undefined);
     if (!tenantId) {
+      if (config.AUTH_MODE === "optional") {
+        res.locals.tenantId = "";
+        next();
+        return;
+      }
       res.status(400).json({ error: "Invalid tenant context" });
       return;
     }
-    req.user.tenantId = tenantId;
+
     res.locals.tenantId = tenantId;
     next();
-    return;
+  } catch (error) {
+    next(error);
   }
-
-  const tenantId = await resolveTenantId(tenantHint ?? undefined);
-  if (!tenantId) {
-    res.status(400).json({ error: "Invalid tenant context" });
-    return;
-  }
-
-  res.locals.tenantId = tenantId;
-  next();
 }
