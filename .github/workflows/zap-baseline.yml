@@ -34,6 +34,7 @@ jobs:
         with:
           target: 'http://localhost:3000'
           cmd_options: '-a'
+
       - name: Prepare env file
         run: cp .env.template .env
 

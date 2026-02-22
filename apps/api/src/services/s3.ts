@@ -1,18 +1,49 @@
-import { S3Client, type S3ClientConfig } from "@aws-sdk/client-s3";
+import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { createHash } from "node:crypto";
 import { config } from "../config.js";
 
-const s3Config: S3ClientConfig = {
+const s3 = new S3Client({
   region: config.AWS_REGION,
-};
-
-if (config.AWS_ACCESS_KEY_ID && config.AWS_SECRET_ACCESS_KEY) {
-  s3Config.credentials = {
+  credentials: {
     accessKeyId: config.AWS_ACCESS_KEY_ID,
-    secretAccessKey: config.AWS_SECRET_ACCESS_KEY,
-  };
+    secretAccessKey: config.AWS_SECRET_ACCESS_KEY
+  }
+});
+
+export function sanitizeFileName(name: string): string {
+  return name.replace(/[^a-zA-Z0-9_.-]/g, "_");
 }
 
-if (config.AWS_S3_ENDPOINT) s3Config.endpoint = config.AWS_S3_ENDPOINT;
-if (config.AWS_S3_FORCE_PATH_STYLE) s3Config.forcePathStyle = true;
+export function getSha256(buffer: Buffer): string {
+  return createHash("sha256").update(buffer).digest("hex");
+}
 
-export const s3 = new S3Client(s3Config);
+export async function uploadReport(
+  fileName: string,
+  mimeType: string,
+  buffer: Buffer,
+  tenantId: string,
+  uploadedBy: string
+): Promise<string> {
+  const safeName = sanitizeFileName(fileName);
+  const checksum = getSha256(buffer);
+  const key = `${tenantId}/${Date.now()}-${safeName}`;
+
+  await s3.send(
+    new PutObjectCommand({
+      Bucket: config.S3_BUCKET,
+      Key: key,
+      Body: buffer,
+      ContentType: mimeType,
+      ChecksumSHA256: checksum,
+      ServerSideEncryption: "AES256",
+      Metadata: {
+        tenantid: tenantId,
+        uploadedby: uploadedBy,
+        checksum
+      }
+    })
+  );
+
+  return key;
+}
