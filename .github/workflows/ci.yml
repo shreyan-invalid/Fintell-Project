@@ -58,6 +58,9 @@ jobs:
       - name: Install dependencies (workspace + dev deps)
         run: pnpm install --frozen-lockfile=false --prod=false
 
+      - name: Generate Prisma client (API)
+        run: pnpm --filter @finintel/api prisma:generate
+
       - name: API typecheck
         run: pnpm --filter @finintel/api typecheck
 
