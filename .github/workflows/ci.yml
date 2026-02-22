@@ -70,12 +70,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Prepare env file
+        run: cp .env.template .env
+
       - name: Build and run API tests in Docker
         run: docker compose run --rm api-test
 
       - name: Stop stack
         if: always()
-        run: docker compose down -v
+        run: docker compose down -v || true
 
   docker-build:
     name: Docker Build Sanity

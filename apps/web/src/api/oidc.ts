@@ -36,7 +36,7 @@ function getRedirectUri(): string {
   return `${window.location.origin}${REDIRECT_PATH}`;
 }
 
-async function beginOidcAuth(mode: "login" | "signup"): Promise<void> {
+export async function beginOidcLogin(): Promise<void> {
   const verifier = randomString(96);
   const state = randomString(32);
 
@@ -53,19 +53,7 @@ async function beginOidcAuth(mode: "login" | "signup"): Promise<void> {
     state
   });
 
-  if (mode === "signup") {
-    params.set("kc_action", "register");
-  }
-
   window.location.assign(`${AUTH_URL}?${params.toString()}`);
-}
-
-export async function beginOidcLogin(): Promise<void> {
-  await beginOidcAuth("login");
-}
-
-export async function beginOidcSignup(): Promise<void> {
-  await beginOidcAuth("signup");
 }
 
 export async function completeOidcCallback(): Promise<void> {
