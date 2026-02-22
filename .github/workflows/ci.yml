@@ -80,7 +80,6 @@ jobs:
         if: always()
         run: docker compose down -v || true
 
-
   docker-build:
     name: Docker Build Sanity
     runs-on: ubuntu-latest
