@@ -1,34 +1,59 @@
-import dotenv from "dotenv";
 import { z } from "zod";
 
-dotenv.config({ path: process.env.ENV_FILE ?? "../../.env" });
+const schema = z
+  .object({
+    NODE_ENV: z.string().default("development"),
+    PORT: z.coerce.number().default(4000),
 
-const schema = z.object({
-  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
-  PORT: z.coerce.number().default(4000),
-  DATABASE_URL: z.string().min(1),
-  REDIS_URL: z.string().min(1),
-  JWT_ISSUER: z.string().url(),
-  JWT_AUDIENCE: z.string().min(1),
-  KEYCLOAK_JWKS_URI: z.string().url(),
-  KEYCLOAK_TOKEN_URL: z
-    .string()
-    .url()
-    .default("http://localhost:8080/realms/finintel/protocol/openid-connect/token"),
-  KEYCLOAK_CLIENT_ID: z.string().default("finintel-api"),
-  KEYCLOAK_CLIENT_SECRET: z.string().default("api-secret"),
-  OIDC_CLIENT_ID: z.string().default("finintel-api"),
-  DEMO_USERNAME: z.string().default("demo"),
-  DEMO_PASSWORD: z.string().default("Demo@1234"),
-  S3_BUCKET: z.string().min(1),
-  AWS_REGION: z.string().default("us-east-1"),
-  AWS_ACCESS_KEY_ID: z.string().min(1),
-  AWS_SECRET_ACCESS_KEY: z.string().min(1),
-  STORAGE_MODE: z.enum(["s3", "local"]).default("s3"),
-  LOCAL_UPLOAD_DIR: z.string().default("/tmp/finintel-uploads"),
-  DEFAULT_TENANT_SLUG: z.string().default("tenant-1"),
-  AUTH_MODE: z.enum(["optional", "required"]).default("required"),
-  AUTH_DEBUG: z.coerce.boolean().default(false)
-});
+    DATABASE_URL: z.string().min(1),
+    REDIS_URL: z.string().min(1),
 
-export const config = schema.parse(process.env);
+    AUTH_MODE: z.enum(["required", "optional", "disabled"]).default("required"),
+    AUTH_DEBUG: z
+      .string()
+      .optional()
+      .transform((v) => v === "true"),
+
+    JWT_ISSUER: z.string().optional(),
+    JWT_AUDIENCE: z.string().optional(),
+    KEYCLOAK_JWKS_URI: z.string().optional(),
+
+    KEYCLOAK_TOKEN_URL: z.string().optional(),
+    KEYCLOAK_CLIENT_ID: z.string().optional(),
+    KEYCLOAK_CLIENT_SECRET: z.string().optional(),
+
+    STORAGE_MODE: z.enum(["s3", "local"]).default("local"),
+    S3_BUCKET: z.string().optional(),
+    AWS_S3_BUCKET: z.string().optional(),
+    AWS_REGION: z.string().default("us-east-1"),
+    AWS_ACCESS_KEY_ID: z.string().optional(),
+    AWS_SECRET_ACCESS_KEY: z.string().optional(),
+    AWS_S3_ENDPOINT: z.string().optional(),
+    AWS_S3_FORCE_PATH_STYLE: z
+      .string()
+      .optional()
+      .transform((v) => v === "true"),
+
+    LOCAL_UPLOAD_DIR: z.string().default("./data/uploads"),
+  })
+  .superRefine((env, ctx) => {
+    if (env.STORAGE_MODE === "s3") {
+      const bucket = env.S3_BUCKET ?? env.AWS_S3_BUCKET;
+      if (!bucket) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["S3_BUCKET"],
+          message: "S3 bucket is required when STORAGE_MODE=s3",
+        });
+      }
+    }
+  });
+
+const parsed = schema.parse(process.env);
+
+export const config = {
+  ...parsed,
+  AUTH_DEBUG: parsed.AUTH_DEBUG ?? false,
+  S3_BUCKET: parsed.S3_BUCKET ?? parsed.AWS_S3_BUCKET ?? "",
+  AWS_S3_FORCE_PATH_STYLE: parsed.AWS_S3_FORCE_PATH_STYLE ?? false,
+};
