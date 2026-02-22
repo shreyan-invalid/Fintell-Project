@@ -1,8 +1,15 @@
-import { Prisma } from "@prisma/client";
 import { Router } from "express";
 import { prisma } from "../db/prisma.js";
 
 export const tenantsRouter = Router();
+
+type PrismaErrorLike = {
+  code?: string;
+};
+
+function isMissingTableError(error: unknown): boolean {
+  return typeof error === "object" && error !== null && (error as PrismaErrorLike).code === "P2021";
+}
 
 tenantsRouter.get("/", async (_req, res) => {
   try {
@@ -24,7 +31,7 @@ tenantsRouter.get("/", async (_req, res) => {
 
     res.json({ tenants });
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2021") {
+    if (isMissingTableError(error)) {
       res.json({ tenants: [] });
       return;
     }

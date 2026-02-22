@@ -1,10 +1,13 @@
 import type { NextFunction, Request, Response } from "express";
-import { Prisma } from "@prisma/client";
 import { config } from "../config.js";
 import { prisma } from "../db/prisma.js";
 
+type PrismaErrorLike = {
+  code?: string;
+};
+
 function isMissingTableError(error: unknown): boolean {
-  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2021";
+  return typeof error === "object" && error !== null && (error as PrismaErrorLike).code === "P2021";
 }
 
 async function ensureDefaultTenant(): Promise<string | null> {
