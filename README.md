@@ -40,6 +40,23 @@ Portfolio-grade full-stack financial intelligence platform for SMEs.
 - Seed tooling:
   - `pnpm --filter @finintel/api seed:10k` generates 10,000 financial records
 
+## Feature matrix
+
+| Capability | Status | Notes |
+| --- | --- | --- |
+| OIDC auth (Keycloak) | Implemented | Login/callback/logout with JWT validation via JWKS |
+| Multi-tenant isolation | Implemented | Tenant-scoped data access in middleware + APIs |
+| Role-based access control | Implemented | OWNER/CFO/ANALYST protected actions |
+| Financial KPIs + trends | Implemented | REST + GraphQL aggregation endpoints |
+| AG Grid dashboard UI | Implemented | Tenant-switchable records and KPI views |
+| Report upload | Implemented | MIME allowlist + checksum + archive metadata |
+| Report download | Implemented | Tenant-scoped download with local/S3 storage support |
+| Storage modes | Implemented | `local` fallback and `s3` mode |
+| Rate limiting | Implemented | Redis-backed per-route budgets |
+| Containerized stack | Implemented | API, web, Postgres, Redis, Keycloak, NGINX |
+| CI quality gates | Implemented | Web/API typecheck, container tests, docker build sanity |
+| Security baseline scan | Implemented | OWASP ZAP baseline workflow |
+
 ## Repo layout
 
 - `apps/api`: API service (REST + GraphQL)
@@ -53,7 +70,7 @@ Portfolio-grade full-stack financial intelligence platform for SMEs.
 1. Copy environment variables:
 
 ```bash
-cp .env.example .env
+cp .env.template .env
 ```
 
 2. Install dependencies:
@@ -79,38 +96,28 @@ pnpm docker:up
 - `GET http://localhost/health`
 - `GET http://localhost/api/v1/financial/metrics` (with bearer token + tenant)
 
-## Sprint execution guide (8 weeks)
+## Sprint execution guide (Completed in 2 sprints)
 
-### Sprint 1 (Weeks 1-2)
+### Sprint 1
 
-- Finalize Keycloak role mapping and token claim templates (`tenant_id`, `role`).
-- Add Prisma migrations and seed scripts.
-- Add production-grade logger and request tracing.
+- Established monorepo and service foundations (API, web, shared packages).
+- Implemented auth baseline with Keycloak JWT verification and tenant-aware middleware.
+- Added Prisma schema, health endpoints, rate limiting, Docker, NGINX, and CI baseline.
+- Built initial dashboard shell with React, Material UI, AG Grid, and React Query.
 
-### Sprint 2 (Weeks 3-4)
+### Sprint 2
 
-- Build full financial aggregation APIs and report upload flow.
-- Add ZAP baseline scan in CI.
-- Increase unit/integration coverage toward 80%.
+- Delivered financial aggregation APIs (REST + GraphQL) with filters and anomaly/source views.
+- Implemented report archival flow: upload, list, and secure download.
+- Added storage flexibility (`local` and `s3` modes) and hardened upload validation.
+- Implemented role-gated operations and tenant switching behavior in UI/API.
+- Added CI quality gates and OWASP ZAP baseline scan workflow.
+- Added seed/data tooling for demo-scale records and tenant test data.
 
 Current execution status:
-- Aggregation + anomaly APIs: implemented
-- S3 archival hardening + MIME checks: implemented
-- 10k seed generator: implemented (`pnpm --filter @finintel/api seed:10k`)
-- ZAP baseline CI: implemented (`.github/workflows/zap-baseline.yml`)
-- Coverage gate for Phase 2 analytics/security units: implemented (`pnpm --filter @finintel/api test:coverage`)
-
-### Sprint 3 (Weeks 5-6)
-
-- Implement multi-tenant dashboard variants and advanced AG Grid UX.
-- Add optimistic workflows and drag-drop filtering.
-- Add Cypress critical-path E2E and Lighthouse automation.
-
-### Sprint 4 (Weeks 7-8)
-
-- Add ELK stack and dashboards.
-- Configure blue-green deployment pipeline to AWS.
-- Run Artillery load tests and collect benchmark evidence.
+- Sprint 1: completed
+- Sprint 2: completed
+- Phase 2 scope: delivered
 
 ## Portfolio proof checklist
 
